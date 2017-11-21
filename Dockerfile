@@ -14,7 +14,7 @@ RUN apt-get install -y software-properties-common
 RUN apt-get update
 RUN apt-get -y install python-gevent git wget python-pip python-dev python-gmpy2 flex bison libgmp-dev libssl-dev
 
-RUN pip install PySocks pycrypto ecdsa zfec gipc nose2 ethereum
+RUN pip install PySocks pycrypto ecdsa zfec gipc 
 
 RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz
 RUN tar -xvf pbc-0.5.14.tar.gz
@@ -38,11 +38,6 @@ WORKDIR /usr/local/src/
 RUN git clone https://github.com/amiller/honeybadgerbft --branch demo3 HoneyBadgerBFT
 WORKDIR $SRC
 
-
-RUN git clone https://github.com/joelburget/go-ethereum #10001
-WORKDIR go-ethereum
-RUN make geth
-#RUN go get ./cmd/geth
 
 ENV LIBRARY_PATH /usr/local/lib
 ENV LD_LIBRARY_PATH /usr/local/lib

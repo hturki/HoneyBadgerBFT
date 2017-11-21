@@ -24,11 +24,11 @@ do
   done
 done
 
-tmux new-session    "${launch[mnt224:1]}; ${launch[ss512:1]}; python run_fifo.py -i 1; bash" \;  \
-     splitw -h -p 67 "${launch[mnt224:2]}; ${launch[ss512:2]}; python run_fifo.py -i 2; bash" \;  \
+tmux new-session    "${launch[mnt224:1]}; ${launch[ss512:1]}; python run_fifo.py -i 1 -s /tmp/hyper-ledger-honey-badger-bft-1-receive -r /tmp/hyper-ledger-honey-badger-bft-send-1; bash" \;  \
+     splitw -h -p 67 "${launch[mnt224:2]}; ${launch[ss512:2]}; python run_fifo.py -i 2 -s /tmp/hyper-ledger-honey-badger-bft-2-receive -r /tmp/hyper-ledger-honey-badger-bft-send-2; bash" \;  \
      splitw -h -p 50 "bash -c \"python echosock.py&\"; cd go-ethereum; ./build/bin/geth --datadir gdata --networkid 10 init genesis.json; env BADGER_SOCK=/tmp/hb GETH_SOCK=/tmp/gethsock ./build/bin/geth --datadir gdata --networkid 10 --password \"\" --unlock 0 console; bash" \;  \
      splitw -v -p 50 "bash" \;  \
      selectp -t 0 \; \
-     splitw -v -p 50 "${launch[mnt224:3]}; ${launch[ss512:3]}; python run_fifo.py -i 3; bash" \;  \
+     splitw -v -p 50 "${launch[mnt224:3]}; ${launch[ss512:3]}; python run_fifo.py -i 3 -s /tmp/hyper-ledger-honey-badger-bft-3-receive -r /tmp/hyper-ledger-honey-badger-bft-send-3; bash" \;  \
      selectp -t 2\; \
-     splitw -v -p 50 "${launch[mnt224:4]}; ${launch[ss512:4]}; python run_fifo.py -i 4; bash"
+     splitw -v -p 50 "${launch[mnt224:4]}; ${launch[ss512:4]}; python run_fifo.py -i 4 -s /tmp/hyper-ledger-honey-badger-bft-4-receive -r /tmp/hyper-ledger-honey-badger-bft-send-4; bash"

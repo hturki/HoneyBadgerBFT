@@ -1,4 +1,5 @@
 #!/usr/bin/python
+
 import gevent
 from gevent import monkey
 monkey.patch_all()
@@ -6,35 +7,19 @@ monkey.patch_all()
 from gevent.queue import *
 from gevent.server import StreamServer
 from gevent import Greenlet
-#from ..core.utils import bcolors, mylog
-from collections import defaultdict
+import ast
+import cPickle as pickle
 import os
-import time
+import socket
 import socks
 import struct
-import math
-import cPickle as pickle
-import ast
+import sys
 
 from honeybadgerbft.crypto.threshsig import boldyreva
 from honeybadgerbft.crypto.threshenc import tpke
 from honeybadgerbft.core.honeybadger import HoneyBadgerBFT
-import rlp
-from rlp.sedes import CountableList
-from ethereum.transactions import Transaction
 
-def eth_decode(payload):
-    return rlp.decode(payload, CountableList(Transaction))
-
-def eth_encode(txes):
-    return rlp.encode(txes)
-
-from subprocess import check_output
-from random import Random
 from socket import error as SocketError
-
-def mylog(s, verboseLevel=0):
-    print s
 
 def to_serialized_element(x,y):
     import base64
@@ -43,7 +28,6 @@ def to_serialized_element(x,y):
     x = binascii.unhexlify(evenify("%x" % x))
     y = binascii.unhexlify(evenify("%x" % y))
     return "1:" + base64.b64encode(x+y)
-    #return x+y
 
 def read_keyshare_file(filename, deserialize, N=4):
     """
@@ -69,8 +53,6 @@ def read_keyshare_file(filename, deserialize, N=4):
     SK = int(lines[-1].split(':')[-1])
     return VKs[0], VKs[1:], SK
 
-#from ..commoncoin.boldyreva_gipc import initialize as initializeGIPC
-
 BASE_PORT = 49500
 WAITING_SETUP_TIME_IN_SEC = 3
 
@@ -95,10 +77,9 @@ def goodrecv(sock, length):
 
 def listen_to_channel(port):
     # Returns a queue we can read from
-    mylog('Preparing server on %d...' % port)
+    print 'Preparing server on %d...' % port
     q = Queue()
-    def _handle(socket, address):
-        #f = socket.makefile()
+    def _handle(socket):
         while True:
             try:
                 msglength, = struct.unpack('<I', goodrecv(socket, 4))
@@ -110,13 +91,14 @@ def listen_to_channel(port):
             sender, payload = obj
             # TODO: authenticate sender using TLS certificate
             q.put( (sender, payload) )
+
     server = StreamServer(('127.0.0.1', port), _handle)
     server.start()
     return q
 
 def connect_to_channel(hostname, port, myID):
     # Returns a queue we can write to
-    mylog('Trying to connect to %s as party %d' % (repr((hostname, port)), myID), verboseLevel=-1)
+    print 'Trying to connect to %s as party %d' % (repr((hostname, port)), myID)
     s = socks.socksocket()
     q = Queue()
     def _run():
@@ -130,8 +112,8 @@ def connect_to_channel(hostname, port, myID):
                 retry = True
                 gevent.sleep(1)
                 s.close()
-                mylog('retrying (%s, %d) caused by %s...' % (hostname, port, str(e)) , verboseLevel=-1)
-        mylog('Connection established (%s, %d)' % (hostname, port))
+                print 'retrying (%s, %d) caused by %s...' % (hostname, port, str(e))
+        print 'Connection established (%s, %d)' % (hostname, port)
         while True:
             obj = q.get()
             try:
@@ -152,7 +134,7 @@ def connect_to_channel(hostname, port, myID):
     return q
 
 def exception(msg):
-    mylog(bcolors.WARNING + "Exception: %s\n" % msg + bcolors.ENDC)
+    print "Exception: %s" % msg
     os.exit(1)
 
 def encode(m):
@@ -161,7 +143,7 @@ def encode(m):
 def decode(s):
     return pickle.loads(s)
 
-def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK):
+def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, path):
     '''
     Test for the client with random delay channels
     :param i: the current node index
@@ -194,16 +176,33 @@ def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK):
                            sPK, sSK, ePK, eSK,
                            send, recv,
                            tx_submit.get, tx_commit.put,
-                           encode=eth_encode, decode=eth_decode)
+                           encode=repr, decode=ast.literal_eval)
     th = Greenlet(hbbft.run)
     th.parent_args = (N, f)
     th.name = __file__+'.honestParty(%d)' % i
     th.start()
 
-    # Submit random transactions
-    #for txidx in range(100):
-    #    tx_submit.put(["Transaction:%d:%d" % (myID, txidx)])
-    #    gevent.sleep(1)
+    if os.path.exists(path):
+        os.remove(path)
+
+    print "Opening socket at path " + path
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    server.bind(path)
+
+    while True:
+        length = server.recv(8)
+        if not length:
+            break
+        else:
+            length, = struct.unpack('!L', length)
+            message = server.recv(length)
+            print message
+            tx_submit.put([message])
+
+    print "Shutting down..."
+    server.close()
+    os.remove(path)
+
     th.join()
 
 import atexit
@@ -216,13 +215,17 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-i", "--index", dest="i",
                       help="Node index (1 through -N)", metavar="I", type="int")
+    parser.add_option("-s", "--socket-path", dest="send-path",
+                      help="Send path to use for unix socket", metavar="PATH", type="str")
+    parser.add_option("-r", "--receive-path", dest="send-path",
+                      help="Receive path to use for unix socket", metavar="PATH", type="str")
     (options, args) = parser.parse_args()
 
     N = 4
     f = 1
     if not options.i:
         parser.error('Please specify the arguments')
-        system.exit(1)
+        sys.exit(1)
     assert 1 <= options.i <= 4
     myID = options.i-1
     print myID
@@ -241,5 +244,5 @@ if __name__ == '__main__':
     sPK = boldyreva.TBLSPublicKey(N, f+1, sVK, sVKs)
     sSK = boldyreva.TBLSPrivateKey(N, f+1, sVK, sVKs, sSK, myID)
 
-    run_badger_node(myID, N, f, sPK, sSK, ePK, eSK)
+    run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, options.path)
     
