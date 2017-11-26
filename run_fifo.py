@@ -79,7 +79,7 @@ def listen_to_channel(port):
     # Returns a queue we can read from
     print 'Preparing server on %d...' % port
     q = Queue()
-    def _handle(socket):
+    def _handle(socket, address):
         while True:
             try:
                 msglength, = struct.unpack('<I', goodrecv(socket, 4))
@@ -143,7 +143,9 @@ def encode(m):
 def decode(s):
     return pickle.loads(s)
 
-def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, path):
+sendConnection = None
+
+def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, sendPath, receivePath):
     '''
     Test for the client with random delay channels
     :param i: the current node index
@@ -171,37 +173,61 @@ def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, path):
 
     # Start the honeybadger instance
     tx_submit = Queue()
-    tx_commit = Queue()
+
+    def send_to_hyperledger(transactions):
+        global sendConnection
+        for tx in transactions:
+            if os.path.exists(sendPath):
+                if sendConnection is None:
+                    print "Opening sending socket at path " + sendPath
+                    sendConnection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    sendConnection.connect(sendPath)
+                print "sending length " + str(len(tx))
+                sendConnection.send(struct.pack('!Q', len(tx)))
+                print "sending tx " + tx
+                sendConnection.send(tx)
+
     hbbft = HoneyBadgerBFT("sid", myID, 8, N, f,
                            sPK, sSK, ePK, eSK,
                            send, recv,
-                           tx_submit.get, tx_commit.put,
+                           tx_submit.get, send_to_hyperledger,
                            encode=repr, decode=ast.literal_eval)
     th = Greenlet(hbbft.run)
     th.parent_args = (N, f)
     th.name = __file__+'.honestParty(%d)' % i
     th.start()
 
-    if os.path.exists(path):
-        os.remove(path)
+    if os.path.exists(receivePath):
+        os.remove(receivePath)
 
-    print "Opening socket at path " + path
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    server.bind(path)
+    print "Opening listening socket at path " + receivePath
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(receivePath)
+
+    # Listen for incoming connections
+    server.listen(1)
 
     while True:
-        length = server.recv(8)
-        if not length:
-            break
-        else:
-            length, = struct.unpack('!L', length)
-            message = server.recv(length)
-            print message
-            tx_submit.put([message])
+        # Wait for a connection
+        connection, client_address = server.accept()
+        try:
+            while True:
+                message = connection.recv(8)
+                if message:
+                    print "Message " + message
+                    length, = struct.unpack('!Q', message)
+                    print length
+                    message = connection.recv(length)
+                    print message
+                    tx_submit.put([message])
+                else:
+                    print >> sys.stderr, 'no more data from', client_address
+                    break
 
-    print "Shutting down..."
-    server.close()
-    os.remove(path)
+        finally:
+            # Clean up the connection
+            connection.close()
+            os.remove(receivePath)
 
     th.join()
 
@@ -215,10 +241,10 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("-i", "--index", dest="i",
                       help="Node index (1 through -N)", metavar="I", type="int")
-    parser.add_option("-s", "--socket-path", dest="send-path",
-                      help="Send path to use for unix socket", metavar="PATH", type="str")
-    parser.add_option("-r", "--receive-path", dest="send-path",
-                      help="Receive path to use for unix socket", metavar="PATH", type="str")
+    parser.add_option("-s", "--send-path", dest="sendPath",
+                      help="Path to use for unix socket that sends messages to Hyperledger", metavar="PATH", type="str")
+    parser.add_option("-r", "--receive-path", dest="receivePath",
+                      help="Path to use for unix socket that listens for messages from Hyperledger", metavar="PATH", type="str")
     (options, args) = parser.parse_args()
 
     N = 4
@@ -244,5 +270,5 @@ if __name__ == '__main__':
     sPK = boldyreva.TBLSPublicKey(N, f+1, sVK, sVKs)
     sSK = boldyreva.TBLSPrivateKey(N, f+1, sVK, sVKs, sSK, myID)
 
-    run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, options.path)
+    run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, options.sendPath, options.receivePath)
     
