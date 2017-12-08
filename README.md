@@ -12,124 +12,78 @@ HoneyBadgerBFT is fault tolerance for the wild wild wide-area-network. HoneyBadg
 This is released under the CRAPL academic license. See ./CRAPL-LICENSE.txt
 Other licenses may be issued at the authors' discretion.
 
-### Docker
+### Making this work with HyperLedger
 
-Build the docker image first.
+On an Amazon CentOS 7 instance:
 
-    docker build -t honeybadgerbft .
+sudo yum groupinstall "Development Tools" -y
+sudo yum install epel-release -y 
+sudo yum install screen git tmux wget libtool-ltdl-devel python-pip python-devel gmp-devel openssl-devel glibc-static gmp-static libstdc++-static gnutls-devel libgcrypt-devel -y
 
-By default, the Dockerfile will run the test suite:
+wget https://redirector.gvt1.com/edgedl/go/go1.9.2.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.9.2.linux-amd64.tar.gz
+sudo chown -R centos /usr/local/go
 
-    docker run -it honeybadgerbft
+echo "export PATH=$PATH:/usr/local/go/bin" >>  ~/.bashrc
+echo "export FABRIC_CFG_PATH=/usr/local/go/src/github.com/hyperledger/fabric/sampleconfig" >>  ~/.bashrc
 
-### Installation && How to run the code
+source ~/.bashrc
 
-Working directory is usually the **parent directory** of HoneyBadgerBFT. All the bold vars are experiment parameters:
+mkdir -p /usr/local/go/src/github.com/hyperledger/
+cd /usr/local/go/src/github.com/hyperledger/
+git clone https://github.com/hturki/fabric
+cd fabric/orderer
+go build
+cd sample_clients/broadcast_msg
+go build
+cd ../deliver_stdout/
+go build
+sudo mkdir /var/hyperledger
+sudo chown -R centos /var/hyperledger
 
-+ **N** means the total number of parties;
-+ **t** means the tolerance, usually N/4 in our experiments;
-+ **B** means the maximum number of transactions committed in a block (by default N log N). And therefore each party proposes B/N transactions.
+cd ~/
+wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz
+tar -xvf pbc-0.5.14.tar.gz
+cd pbc-0.5.14 && ./configure && sudo make && sudo make install
 
-#### Install dependencies (maybe it is faster to do a snapshot on EC2 for these dependencies)
-pbc
+sudo pip install PySocks pycrypto ecdsa zfec gipc
 
+cd ~/
+git clone https://github.com/JHUISI/charm.git
+cd charm && git checkout 2.7-dev && ./configure.sh && sudo python setup.py install
 
-    wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz
-    tar -xvf pbc-0.5.14.tar.gz
-    cd pbc-0.5.14
-    ./configure ; make ; sudo make install
-    export LIBRARY_PATH=$LIBRARY_PATH:/usr/local/lib
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+cd ~/
+git clone https://github.com/hturki/HoneyBadgerBFT
+cd HoneyBadgerBFT
+mkdir dkg
+cd dkg
+git clone https://github.com/amiller/distributed-keygen DKG_0.8.0
+cd DKG_0.8.0/PBC/
+sudo make clean && sudo make
+cd ../src
+sudo make clean && sudo make
 
-charm
+And then on separate screens:
 
+Start up HoneyBadger BFT:
 
-    sudo apt-get install python3-dev
-    git clone https://github.com/JHUISI/charm.git
-    cd charm
-    git checkout 2.7-dev
-    sudo python setup.py install
+cd ~/HoneyBadgerBFT
+export LD_LIBRARY_PATH=/usr/local/lib
+export LIBRARY_PATH=/usr/local/lib
+sh launch-4.sh
 
+Start up the orderer:
 
+cd /usr/local/go/src/github.com/hyperledger/fabric/orderer
+./orderer
 
-pycrypt
+Broadcast a message:
 
+cd /usr/local/go/src/github.com/hyperledger/fabric/orderer/sample_clients/broadcast_msg/
+./broadcast_msg
 
-    sudo python -m pip install pycrypto
+View the output of the chain in human readable form:
 
-Clone the code:
-
-    git clone https://github.com/amiller/HoneyBadgerBFT.git
-    git checkout dev
-
-Generate the keys
-+ Threshold Signature Keys
-
-    python -m HoneyBadgerBFT.commoncoin.generate_keys N (t+1) > thsigN_t.keys
-
-+ ECDSA Keys
-
-    python -m HoneyBadgerBFT.ecdsa.generate_keys_ecdsa N > ecdsa.keys
-
-Threshold Encryption Keys
-
-    python -m HoneyBadgerBFT.threshenc.generate_keys N (N-2t) > thencN_t.keys
-
-Usually, we run ecdsa key generation with large N just once because it can be re-used for different N/t.
-And we can store threshold signature keys and threshold encryption keys into different files for convenience.
-
-##### Launch the code
-    python -m HoneyBadgerBFT.test.honest_party_test -k thsigN_t.keys -e ecdsa.keys -b B -n N -t t -c thencN_t.keys
-
-Notice that each party will expect at least NlgN many transactions. And usually there is a key exception after they finish the consensus. Please just ignore it.
-
-### How to deploy the Amazon EC2 experiment
-
-At HoneyBadger/ec2/ folder, run
-
-    python utility.py [ec2_access_key] [ec2_secret_key]
-
-In this interactive ipython environment, run the following:
-
-+ Prepare the all the keys files and put them in your local directory (namely ec2 folder)
-	
-	(See the instructions above)
-
-+ Launch new machines
-        
-        launch_new_instances(region, number_of_machine)
-
-+ Query IPs
-
-        ipAll()
-
-+ Synchronize keys
-    
-        c(getIP(), 'syncKeys')
-
-+ Install Dependencies
-    
-        c(getIP(), 'install_dependencies')
-
-+ Clone and repo
-
-    	c(getIP(), 'git_pull')
-
-+ Launch the experiment
-
-    	c(getIP(), 'runProtocol:N,t,B')
-where N, t, B are experiment parameters (replace them with numbers).
-
-### Roadmap and TODO
-
-- Implement distributed key generation
-
-- Investigate better parameterization and add support for larger key sizes
-
-- Replace plain TCP sockets with reliable/authenticated channels
-
-- Integration with Hyperledger, Open Blockchain, etc.
-
-Interested in contributing to HoneyBadgerBFT? Developers wanted. Contact ic3directors@systems.cs.cornell.edu for more info.
-
+cd /usr/local/go/src/github.com/hyperledger/fabric/orderer/sample_clients/deliver_stdout/
+./deliver_stdout
 
