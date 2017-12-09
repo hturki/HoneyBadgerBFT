@@ -92,7 +92,7 @@ def listen_to_channel(port):
             # TODO: authenticate sender using TLS certificate
             q.put( (sender, payload) )
 
-    server = StreamServer(('127.0.0.1', port), _handle)
+    server = StreamServer(('127.0.0.1', port), _handle) # TODO (fidel): Update here
     server.start()
     return q
 
@@ -167,7 +167,7 @@ def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, sendPath, receivePath):
     send_queues = []
     for i in range(N):
         port = BASE_PORT + i
-        send_queues.append(connect_to_channel('127.0.0.1', port, myID))
+        send_queues.append(connect_to_channel('127.0.0.1', port, myID)) # TODO (fidel): update here
     def send(j, obj):
         send_queues[j].put(obj)
 
@@ -181,7 +181,11 @@ def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, sendPath, receivePath):
                 if sendConnection is None:
                     print "Opening sending socket at path " + sendPath
                     sendConnection = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                    sendConnection.connect(sendPath)
+                    try: 
+                      sendConnection.connect(sendPath)
+                    except Exception as e:
+                      print e.__doc__
+                      print e.message
                 print "sending length " + str(len(tx))
                 sendConnection.send(struct.pack('!Q', len(tx)))
                 print "sending tx " + tx
