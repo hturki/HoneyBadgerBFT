@@ -9,3 +9,4 @@ ec2/logs_old/*
 ec2/hosts
 *_keys
 *.keys
+dkg/

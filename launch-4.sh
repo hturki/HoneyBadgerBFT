@@ -1,6 +1,9 @@
 #!/bin/bash
 killall -9 node
 
+export LD_LIBRARY_PATH=/usr/local/lib
+export LIBRARY_PATH=/usr/local/lib
+
 declare -A baseport    # These must be kept up to date with contlist!
 baseport[mnt224]=9000
 baseport[ss512]=9500
