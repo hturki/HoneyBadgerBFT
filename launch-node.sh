@@ -20,6 +20,7 @@ do
   ln -s $DKG/$curve.contlist $DKG/$curve/node$x/contlist
   ln -s $DKG/$curve.system.param $DKG/$curve/node$x/system.param
   ln -s $DKG/$curve.pairing.param $DKG/$curve/node$x/pairing.param
+  ls $DKG/$curve/node$x
   launch["$curve:$x"]="pushd $DKG/$curve/node$x; bash -c \"./node $((${baseport[$curve]}+$x)) certs/$x.pem certs/$x-key.pem contlist 0 0 0&\"; popd"
   echo ${launch["$curve:$x"]}
 done
