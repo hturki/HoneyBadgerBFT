@@ -26,13 +26,13 @@ done
 
 if [ $1 == '1' ]
 then
-  tmux new-session    "${launch[mnt224:1]}; ${launch[ss512:1]}; python run_fifo.py -i 1 -s /tmp/hyper-ledger-honey-badger-bft-1-receive -r /tmp/hyper-ledger-honey-badger-bft-1-send > /tmp/output.log; bash" \;  \
+  tmux new-session    "${launch[mnt224:1]}; ${launch[ss512:1]}; python run_fifo.py -i 1 -s /tmp/hyper-ledger-honey-badger-bft-1-receive -r /tmp/hyper-ledger-honey-badger-bft-1-send > /tmp/output.log; bash"
 elif [ $1 == '2' ]
 then
-  tmux new-session    "${launch[mnt224:2]}; ${launch[ss512:2]}; python run_fifo.py -i 2 -s /tmp/hyper-ledger-honey-badger-bft-2-receive -r /tmp/hyper-ledger-honey-badger-bft-2-send; bash" \;  \
+  tmux new-session    "${launch[mnt224:2]}; ${launch[ss512:2]}; python run_fifo.py -i 2 -s /tmp/hyper-ledger-honey-badger-bft-2-receive -r /tmp/hyper-ledger-honey-badger-bft-2-send; bash"
 elif [ $1 == '3' ]
 then
-  tmux new-session    "${launch[mnt224:3]}; ${launch[ss512:3]}; python run_fifo.py -i 3 -s /tmp/hyper-ledger-honey-badger-bft-3-receive -r /tmp/hyper-ledger-honey-badger-bft-3-send; bash" \;  \
+  tmux new-session    "${launch[mnt224:3]}; ${launch[ss512:3]}; python run_fifo.py -i 3 -s /tmp/hyper-ledger-honey-badger-bft-3-receive -r /tmp/hyper-ledger-honey-badger-bft-3-send; bash"
 elif [ $1 == '4' ]
 then
   tmux new-session    "${launch[mnt224:4]}; ${launch[ss512:4]}; python run_fifo.py -i 4 -s /tmp/hyper-ledger-honey-badger-bft-4-receive -r /tmp/hyper-ledger-honey-badger-bft-4-send; bash"
