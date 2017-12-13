@@ -144,12 +144,7 @@ def decode(s):
     return pickle.loads(s)
 
 sendConnection = None
-ip_by_node_id = {
-    1: "52.34.168.166",
-    2: "35.177.150.68",
-    3: "13.230.110.10",
-    4: "13.210.86.50"
-}
+nodes_ip = ["52.34.168.166", "35.177.150.68", "13.230.110.10", "13.210.86.50"]
 
 def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, sendPath, receivePath):
     '''
@@ -173,7 +168,7 @@ def run_badger_node(myID, N, f, sPK, sSK, ePK, eSK, sendPath, receivePath):
     send_queues = []
     for i in range(N):
         port = BASE_PORT + i
-        send_queues.append(connect_to_channel(ip_by_node_id[i], port, myID))
+        send_queues.append(connect_to_channel(nodes_ip[i], port, myID))
     def send(j, obj):
         send_queues[j].put(obj)
 
