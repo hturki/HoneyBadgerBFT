@@ -7,21 +7,21 @@ baseport[ss512]=9500
 
 DKG=$PWD/dkg/DKG_0.8.0/DKG-Executable/
 
+x=$1
+echo $x
+
 declare -A launch
 for curve in mnt224 ss512
 do
-  for x in `seq 1 4`
-  do
-    rm -r $DKG/$curve/node$x
-    mkdir -p $DKG/$curve/node$x
-    ln -s $DKG/../src/node $DKG/$curve/node$x/
-    ln -s $DKG/certs $DKG/$curve/node$x/
-    ln -s $DKG/$curve.contlist $DKG/$curve/node$x/contlist
-    ln -s $DKG/$curve.system.param $DKG/$curve/node$x/system.param
-    ln -s $DKG/$curve.pairing.param $DKG/$curve/node$x/pairing.param
-    launch["$curve:$x"]="pushd $DKG/$curve/node$x; bash -c \"./node $((${baseport[$curve]}+$x)) certs/$x.pem certs/$x-key.pem contlist 0 0 0&\"; popd"
-    echo ${launch["$curve:$x"]}
-  done
+  rm -r $DKG/$curve/node$x
+  mkdir -p $DKG/$curve/node$x
+  ln -s $DKG/../src/node $DKG/$curve/node$x/
+  ln -s $DKG/certs $DKG/$curve/node$x/
+  ln -s $DKG/$curve.contlist $DKG/$curve/node$x/contlist
+  ln -s $DKG/$curve.system.param $DKG/$curve/node$x/system.param
+  ln -s $DKG/$curve.pairing.param $DKG/$curve/node$x/pairing.param
+  launch["$curve:$x"]="pushd $DKG/$curve/node$x; bash -c \"./node $((${baseport[$curve]}+$x)) certs/$x.pem certs/$x-key.pem contlist 0 0 0&\"; popd"
+  echo ${launch["$curve:$x"]}
 done
 
 if [ $1 == '1' ]

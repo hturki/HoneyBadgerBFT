@@ -261,6 +261,7 @@ if __name__ == '__main__':
             sVK, sVKs, sSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize)
             eVK, eVKs, eSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize)
         except IOError, e:
+            print "IO Error, trying again..."
             gevent.sleep(1) # Waiting for keys
             continue
         break
