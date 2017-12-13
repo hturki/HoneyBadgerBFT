@@ -268,8 +268,8 @@ if __name__ == '__main__':
 
     while True:
         try:
-            sVK, sVKs, sSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize)
-            eVK, eVKs, eSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize)
+            sVK, sVKs, sSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize, 1)
+            eVK, eVKs, eSK = read_keyshare_file('dkg/DKG_0.8.0/DKG-Executable/ss512/node%d/keys.out'%(myID+1), tpke.group.deserialize, 1)
         except IOError, e:
             gevent.sleep(1) # Waiting for keys
             continue
